@@ -28,7 +28,7 @@ class BaseModel(PreTrainedModel):
 
         self.scheme = config.scheme
         self.num_labels = config.num_labels
-        print("num of labels:", self.num_labels)
+        
         if hasattr(config, 'balance_sample_weights'):
             sample_weights = config.sample_weights if config.balance_sample_weights else None
             sample_weights = torch.tensor(sample_weights, dtype=torch.float32) if sample_weights else None
@@ -81,7 +81,9 @@ class BaseModel(PreTrainedModel):
             seq_tags = []
             for each_tag in [self.spec_tag1, self.spec_tag2]:
                 seq_tags.append(self.special_tag_representation(seq_output, input_ids, each_tag))
-                print(seq_tags[-1])
+            print("pooled_output:\n", pooled_output)
+            print("seq_tags:\n", seq_tags)
+
             new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
         elif self.scheme == 3:
             seq_tags = []
@@ -130,9 +132,6 @@ class BertForRelationIdentification(BertForSequenceClassification, BaseModel):
 
         pooled_output = outputs[1]
         seq_output = outputs[0]
-
-        print("pooled_output", pooled_output)
-        print("seq_output", seq_output)
 
         logits = self.output2logits(pooled_output, seq_output, input_ids)
 

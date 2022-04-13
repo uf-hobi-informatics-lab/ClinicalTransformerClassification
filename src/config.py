@@ -7,8 +7,8 @@ from models import (BertForRelationIdentification, RoBERTaForRelationIdentificat
                     MegatronForRelationIdentification)
 
 
-EN1_START = "[s1]"
-EN1_END = "[e1]"
+EN1_START = "[s]"
+EN1_END = "[e]"
 
 # keep the seq order
 SPEC_TAGS = [EN1_START, EN1_END]
