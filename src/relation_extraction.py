@@ -176,7 +176,7 @@ if __name__ == '__main__':
     save_json(vars(args), Path(args.new_model_dir) / "training_arguments.json")
 
     # other setup
-    # args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    args.device = torch.device("cpu")
+    args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # args.device = torch.device("cpu")
     args.logger = TransformerLogger(logger_file=args.log_file, logger_level=args.log_lvl).get_logger()
     app(args)

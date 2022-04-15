@@ -301,7 +301,7 @@ class RelationDataFormatSepProcessor(DataProcessor):
             text_a = self._process_seq_len(text_a, total_special_toks=total_special_toks)
             examples.append(
                 InputExample(guid=guid, text_a=text_a, label=label))
-        print(examples)
+        # print(examples)
         return examples
 
     def _create_examples(self, lines, set_type):

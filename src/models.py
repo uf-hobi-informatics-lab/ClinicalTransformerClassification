@@ -23,7 +23,7 @@ class BaseModel(PreTrainedModel):
         super().__init__(config)
 
         # self.spec_tag1, self.spec_tag2, self.spec_tag3, self.spec_tag4 = config.tags
-        print("TAGS:\n", config.tags)
+        # print("TAGS:\n", config.tags)
         self.spec_tag1, self.spec_tag2 = config.tags
 
         self.scheme = config.scheme
@@ -63,9 +63,11 @@ class BaseModel(PreTrainedModel):
     @staticmethod
     def special_tag_representation(seq_output, input_ids, special_tag):
         spec_idx = (input_ids == special_tag).nonzero(as_tuple=False)
-
+        # print("seq_output size: ", len(seq_output))
+        # print("input_ids:\n", input_ids)
         temp = []
         for idx in spec_idx:
+            # print(idx)
             temp.append(seq_output[idx[0], idx[1], :])
         tags_rep = torch.stack(temp, dim=0)
 
@@ -81,8 +83,8 @@ class BaseModel(PreTrainedModel):
             seq_tags = []
             for each_tag in [self.spec_tag1, self.spec_tag2]:
                 seq_tags.append(self.special_tag_representation(seq_output, input_ids, each_tag))
-            print("pooled_output:\n", pooled_output)
-            print("seq_tags:\n", seq_tags)
+            # print("pooled_output:\n", pooled_output)
+            # print("seq_tags:\n", seq_tags)
 
             new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
         elif self.scheme == 3:
