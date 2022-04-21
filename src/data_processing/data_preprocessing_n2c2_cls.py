@@ -123,7 +123,7 @@ def gen_relations(mappings, ens, e2i, nnsents, nsents, f_stem, do_train=True, va
                 if w_loc[1] == e_loc[1]:
                     ann_sent += "[e] "
                     is_end = True
-                    
+
             txt_index += 1
 
         ann_sent = ann_sent[:-1]
@@ -146,6 +146,10 @@ def create_training_samples(file_path, valids=None, valid_comb=None):
     root = Path(file_path)
     
     d_med = {}
+    d_event = {}
+
+    # Debug
+    ls_a_cnter = []
    
     for txt_fn in root.glob("*.txt"):
         fids.append(txt_fn.stem)
@@ -154,34 +158,44 @@ def create_training_samples(file_path, valids=None, valid_comb=None):
         # load text
         txt = load_text(txt_fn)
         pre_txt, sents = pre_processing(txt_fn, deid_pattern=MIMICIII_PATTERN)
-        e2i, ens, rels = read_annotation_brat(ann_fn)
+        e2i, ens, evt, a_cnter = read_annotation_brat(ann_fn)
         i2e = {v: k for k, v in e2i.items()}
         
+        ls_a_cnter.append((txt_fn, a_cnter))
+
         nsents, sent_bound = generate_BIO(sents, ens, file_id="", no_overlap=False, record_pos=True)
         # print(nsents)
         total_len = len(nsents)
         nnsents = [w for sent in nsents for w in sent]
         mappings = create_entity_to_sent_mapping(nnsents, ens, i2e)
-        # print("--------------------------------------------------------------------------")
-        # print(mappings)
-        # print(ens)
-        # print(e2i)
-        if txt_fn.stem == "177-03":
-            print(nsents)
-            print(mappings)
-            print(ens)
 
-        relations = gen_relations(mappings, ens, e2i, nnsents, nsents, txt_fn.stem)
+        medications = gen_relations(mappings, ens, e2i, nnsents, nsents, txt_fn.stem)
         print("**************************************************************************")
-        # print(relations)
+        # print("entities:\n", ens)
 
-        for key in relations.keys():
+        for key in medications.keys():
             if d_med.get(key):
-                d_med[key].append(relations[key])
+                d_med[key].append(medications[key])
             else:
-                d_med[key] = [relations[key]]
+                d_med[key] = [medications[key]]
+
+        for evt_name in evt.keys():
+            events = gen_relations(mappings, evt[evt_name], e2i, nnsents, nsents, txt_fn.stem)
+
+            # print("Events: ", evt_name, "\n", evt[evt_name])
+
+            if not d_event.get(evt_name):
+                d_event[evt_name] = {}
+
+            for key in events.keys():
+                if d_event[evt_name].get(key):
+                    d_event[evt_name][key].append(events[key])
+                else:
+                    d_event[evt_name][key] = [events[key]]
+
+    print(ls_a_cnter)
       
-    return d_med
+    return d_med, d_event
 
 
 def create_test_samples(file_path, valids=None, valid_comb=None):
@@ -190,6 +204,8 @@ def create_test_samples(file_path, valids=None, valid_comb=None):
     root = Path(file_path)
 
     preds = {}
+    d_event = {}
+
     
     for txt_fn in root.glob("*.txt"):
         fids.append(txt_fn.stem)
@@ -198,7 +214,7 @@ def create_test_samples(file_path, valids=None, valid_comb=None):
         # load text
         txt = load_text(txt_fn)
         pre_txt, sents = pre_processing(txt_fn, deid_pattern=MIMICIII_PATTERN)
-        e2i, ens, _ = read_annotation_brat(ann_fn)
+        e2i, ens, evt = read_annotation_brat(ann_fn)
         i2e = {v: k for k, v in e2i.items()}
         
         nsents, sent_bound = generate_BIO(sents, ens, file_id="", no_overlap=False, record_pos=True)
@@ -206,17 +222,27 @@ def create_test_samples(file_path, valids=None, valid_comb=None):
         nnsents = [w for sent in nsents for w in sent]
         mappings = create_entity_to_sent_mapping(nnsents, ens, i2e)
 
-        relations = gen_relations(mappings, ens, e2i, nnsents, nsents, txt_fn.stem, do_train=False)
+        meds = gen_relations(mappings, ens, e2i, nnsents, nsents, txt_fn.stem, do_train=False)
         print("**************************************************************************")
         # print(relations)
 
-        for key in relations.keys():
+        for key in meds.keys():
             if preds.get(key):
-                preds[key].append(relations[key])
+                preds[key].append(meds[key])
             else:
-                preds[key] = [relations[key]]
+                preds[key] = [meds[key]]
+
+        for evt_name in evt.keys():
+            events = gen_relations(mappings, evt[evt_name], e2i, nnsents, nsents, txt_fn.stem)
+            d_event[evt_name] = {}
+
+            for key in events.keys():
+                if d_event[evt_name].get(key):
+                    d_event[evt_name][key].append(events[key])
+                else:
+                    d_event[evt_name][key] = [events[key]]
             
-    return preds
+    return preds, d_event
 
 def to_tsv(data, fn):
     # data: adverse ALLERGIES : [s1] Penicillin [e1] . Drug T24 13_851
@@ -250,7 +276,7 @@ def to_5_cv(data, ofd):
         to_tsv(n, os.path.join(ofd, f"sample{b}", "dev.tsv"))
 
 
-def all_in_one(*dd, dn="2022n2c2", status="Train"):
+def all_in_one(*dd, dn="2022n2c2", status="Train", evt_name = "med"):
     # data: adverse ALLERGIES : [s1] Penicillin [e1] . Drug T24 13_851
     # dd: [{key: [0, "adverse ALLERGIES : [s1] Penicillin [e1] .", "Drug", "T24", "13_851"]}]
     data = []
@@ -263,7 +289,7 @@ def all_in_one(*dd, dn="2022n2c2", status="Train"):
             for each in v:
                 data.append(each[1:])
     
-    output_path = f"/home/chenaokun1990/datasets/{dn}_aio_th{CUTOFF}"
+    output_path = f"/home/chenaokun1990/datasets/{dn}_aio_th{CUTOFF}_{evt_name}"
     p = Path(output_path)
     p.mkdir(parents=True, exist_ok=True)
 
@@ -310,16 +336,27 @@ n2c2_training = "/data/datasets/Aokun/2022_N2C2/2022n2c2_track1/trainingdata_v3/
 n2c2_dev = "/data/datasets/Aokun/2022_N2C2/2022n2c2_track1/trainingdata_v3/dev"
 n2c2_test = "/data/datasets/Aokun/2022_N2C2/2022n2c2_track1/trainingdata_v3/dev"
 
-d_med = create_training_samples(n2c2_training, None, None)
+d_med, d_event = create_training_samples(n2c2_training, None, None)
+
+print("d_event:\n", d_event)
 
 all_in_one(d_med, dn="2022n2c2", status='Train')
 # all_in_unique(d_med, dn="2022n2c2", do_train=True)
 
-d_dev = create_training_samples(n2c2_dev, None, None)
+for evt_name in d_event.keys():
+    all_in_one(d_event[evt_name], dn="2022n2c2", status='Train', evt_name=evt_name)
 
-all_in_one(d_dev, dn="2022n2c2", status='Dev')
+d_dev_med, d_dev_event = create_training_samples(n2c2_dev, None, None)
 
-preds = create_test_samples(n2c2_test, None, None)
+for evt_name in d_dev_event.keys():
+    all_in_one(d_dev_event[evt_name], dn="2022n2c2", status='Dev', evt_name=evt_name)
+
+all_in_one(d_dev_med, dn="2022n2c2", status='Dev')
+
+preds, d_test_event = create_test_samples(n2c2_test, None, None)
+
+for evt_name in d_test_event.keys():
+    all_in_one(d_test_event[evt_name], dn="2022n2c2", status='Test', evt_name=evt_name)
 
 all_in_one(preds, dn="2022n2c2", status='Test')
 # all_in_unique(preds, dn="2022n2c2", do_train=False)
