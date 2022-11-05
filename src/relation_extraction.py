@@ -83,11 +83,11 @@ if __name__ == '__main__':
     parser.add_argument("--model_type", default='bert', type=str, required=True,
                         help="valid values: bert, roberta, albert, xlnet, megatron, deberta, longformer")
     parser.add_argument("--data_format_mode", default=0, type=int,
-                        help="valid values: 0: sep mode - [CLS]S1[SEP]S2[SEP]; 1: uni mode - [CLS]S1S2[SEP]")
+                        help="valid values: 0: sep mode - [CLS]S1[SEP]; 1: uni mode - [CLS]S1[SEP]")
     parser.add_argument("--classification_scheme", default=2, type=int,
                         help="special tokens used for classification. "
                              "Valid values: "
-                             "0: [CLS]; 1: [CLS], [S1], [S2]; 2: [CLS], [S1], [E1], [S2], [E2]; 3: [S1], [S2]")
+                             "0: [CLS]; 1: [CLS], [S1]; 2: [CLS], [S1], [E1]; 3: [S1]")
     parser.add_argument("--pretrained_model", type=str,
                         help="The pretrained model file or directory for fine tuning.")
     parser.add_argument("--data_dir", type=str, required=True,
@@ -177,5 +177,6 @@ if __name__ == '__main__':
 
     # other setup
     args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # args.device = torch.device("cpu")
     args.logger = TransformerLogger(logger_file=args.log_file, logger_level=args.log_lvl).get_logger()
     app(args)

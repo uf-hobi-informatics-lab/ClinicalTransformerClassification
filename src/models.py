@@ -22,10 +22,13 @@ class BaseModel(PreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
 
-        self.spec_tag1, self.spec_tag2, self.spec_tag3, self.spec_tag4 = config.tags
+        # self.spec_tag1, self.spec_tag2, self.spec_tag3, self.spec_tag4 = config.tags
+        # print("TAGS:\n", config.tags)
+        self.spec_tag1, self.spec_tag2 = config.tags
+
         self.scheme = config.scheme
         self.num_labels = config.num_labels
-
+        
         if hasattr(config, 'balance_sample_weights'):
             sample_weights = config.sample_weights if config.balance_sample_weights else None
             sample_weights = torch.tensor(sample_weights, dtype=torch.float32) if sample_weights else None
@@ -47,11 +50,11 @@ class BaseModel(PreTrainedModel):
         self.drop_out = StableDropout(config.hidden_dropout_prob)
 
         if self.scheme == 1:
-            self.classifier_dim = config.hidden_size * 3
-        elif self.scheme == 2:
-            self.classifier_dim = config.hidden_size * 5
-        elif self.scheme == 3:
             self.classifier_dim = config.hidden_size * 2
+        elif self.scheme == 2:
+            self.classifier_dim = config.hidden_size * 3
+        elif self.scheme == 3:
+            self.classifier_dim = config.hidden_size * 1
         else:
             self.classifier_dim = config.hidden_size
 
@@ -60,9 +63,11 @@ class BaseModel(PreTrainedModel):
     @staticmethod
     def special_tag_representation(seq_output, input_ids, special_tag):
         spec_idx = (input_ids == special_tag).nonzero(as_tuple=False)
-
+        # print("seq_output size: ", len(seq_output))
+        # print("input_ids:\n", input_ids)
         temp = []
         for idx in spec_idx:
+            # print(idx)
             temp.append(seq_output[idx[0], idx[1], :])
         tags_rep = torch.stack(temp, dim=0)
 
@@ -71,17 +76,20 @@ class BaseModel(PreTrainedModel):
     def output2logits(self, pooled_output, seq_output, input_ids):
         if self.scheme == 1:
             seq_tags = []
-            for each_tag in [self.spec_tag1, self.spec_tag3]:
+            for each_tag in [self.spec_tag1]:
                 seq_tags.append(self.special_tag_representation(seq_output, input_ids, each_tag))
             new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
         elif self.scheme == 2:
             seq_tags = []
-            for each_tag in [self.spec_tag1, self.spec_tag2, self.spec_tag3, self.spec_tag4]:
+            for each_tag in [self.spec_tag1, self.spec_tag2]:
                 seq_tags.append(self.special_tag_representation(seq_output, input_ids, each_tag))
+            # print("pooled_output:\n", pooled_output)
+            # print("seq_tags:\n", seq_tags)
+
             new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
         elif self.scheme == 3:
             seq_tags = []
-            for each_tag in [self.spec_tag1, self.spec_tag3]:
+            for each_tag in [self.spec_tag1]:
                 seq_tags.append(self.special_tag_representation(seq_output, input_ids, each_tag))
             new_pooled_output = torch.cat(seq_tags, dim=1)
         else:
@@ -126,6 +134,7 @@ class BertForRelationIdentification(BertForSequenceClassification, BaseModel):
 
         pooled_output = outputs[1]
         seq_output = outputs[0]
+
         logits = self.output2logits(pooled_output, seq_output, input_ids)
 
         return self.calc_loss(logits, outputs, labels)

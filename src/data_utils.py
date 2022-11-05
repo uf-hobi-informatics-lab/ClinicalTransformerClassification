@@ -61,14 +61,12 @@ def convert_examples_to_relation_extraction_features(
     features = []
 
     for idx, example in enumerate(tqdm(examples)):
-        text_a, text_b = example.text_a, example.text_b
+        # text_a, text_b = example.text_a, example.text_b
+        text_a = example.text_a
 
         tokens_a = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(text_a))
 
-        if text_b:
-            tokens_b = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(text_b))
-        else:
-            tokens_b = None
+        tokens_b = None
 
         inputs = tokenizer.encode_plus(
             tokens_a, tokens_b, pad_to_max_length=True, max_length=max_length, truncation=False)
@@ -281,9 +279,9 @@ class DataProcessor(object):
 class RelationDataFormatSepProcessor(DataProcessor):
     """
         data format:
-            [CLS] sent1 [SEP] sent2 [SEP] : BERT
-            <s> sent1 </s> </s> sent2 </s> : RoBERTa, LongFormer
-            sent1 <sep> sent2 <sep> <cls>
+            [CLS] sent1 [SEP] : BERT
+            <s> sent1 </s> </s> : RoBERTa, LongFormer
+            sent1 <sep> <cls>
     """
 
     def _create_examples_helper(self, lines_idx, set_type, total_special_toks):
@@ -292,15 +290,18 @@ class RelationDataFormatSepProcessor(DataProcessor):
         for (i, line) in enumerate(tqdm(lines)):
             guid = "{}_{}_{}".format(set_type, start_idx, i)
             text_a = line[1]
-            text_b = line[2]
+            # text_b = line[2]
             label = line[0]
+
             # text after tokenization has a len > max_seq_len:
             # 1. skip all these cases
             # 2. use truncate strategy
             # we adopt truncate way (2) in this implementation as _process_seq_len
-            text_a, text_b = self._process_seq_len(text_a, text_b, total_special_toks=total_special_toks)
+            # text_a, text_b = self._process_seq_len(text_a, text_b, total_special_toks=total_special_toks)
+            text_a = self._process_seq_len(text_a, total_special_toks=total_special_toks)
             examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+                InputExample(guid=guid, text_a=text_a, label=label))
+        # print(examples)
         return examples
 
     def _create_examples(self, lines, set_type):
@@ -345,7 +346,7 @@ class RelationDataFormatSepProcessor(DataProcessor):
 
         return " ".join(tokens)
 
-    def _process_seq_len(self, text_a, text_b, total_special_toks=3):
+    def _process_seq_len(self, text_a, total_special_toks=3):
         """
             This function is used to truncate sequences with len > max_seq_len
             Truncate strategy:
@@ -357,17 +358,19 @@ class RelationDataFormatSepProcessor(DataProcessor):
         """
         flag = True
 
-        while len(self.tokenizer.tokenize(text_a) + self.tokenizer.tokenize(text_b)) \
+        while len(self.tokenizer.tokenize(text_a)) \
                 > (self.max_seq_len - total_special_toks):
 
-            if flag:
-                text_a = self._truncate_helper(text_a)
-            else:
-                text_b = self._truncate_helper(text_b)
+            text_a = self._truncate_helper(text_a)
+            # if flag:
+            #     text_a = self._truncate_helper(text_a)
+            # else:
+            #     text_b = self._truncate_helper(text_b)
 
             flag = not flag
 
-        return text_a, text_b
+        # return text_a, text_b
+        return text_a
 
 
 class RelationDataFormatUniProcessor(DataProcessor):
