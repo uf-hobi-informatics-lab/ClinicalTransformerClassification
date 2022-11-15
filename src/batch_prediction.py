@@ -13,16 +13,16 @@ import argparse
 import distutils
 
 import torch
-from utils import TransformerLogger
-from task import TaskRunner
+from .utils import TransformerLogger
+from .task import TaskRunner
 from pathlib import Path
-from data_processing.io_utils import save_text
+from .data_processing.io_utils import save_text
 import traceback
 import warnings
-from data_utils import (features2tensors, relation_extraction_data_loader,
+from .data_utils import (features2tensors, relation_extraction_data_loader,
                         batch_to_model_input, RelationDataFormatSepProcessor,
                         RelationDataFormatUniProcessor)
-from data_processing.post_processing import app as post_processing
+from .data_processing.post_processing import app as post_processing
 
 
 class BatchRunner(TaskRunner):
@@ -43,15 +43,28 @@ class BatchRunner(TaskRunner):
         self.data_processor.set_tokenizer_type(self.args.model_type)
 
 
-def app(gargs):
+def app(gargs, tsv=None):
     # make model type case in-sensitive
     gargs.model_type = gargs.model_type.lower()
     gargs.progress_bar = False
     gargs.cache_data = False
+    gargs.do_train = False
+    gargs.do_eval = False
+    gargs.do_predict = True
+    gargs.use_binary_classification_mode = False
 
     task_runner = BatchRunner(gargs)
     # no data loader init, we init data loader in reset function during the loop
     task_runner.task_runner_batch_init()
+    
+    if tsv is not None:
+        task_runner.reset_dataloader(gargs.data_dir,
+                                        has_file_header=gargs.data_file_header,
+                                        max_len=gargs.max_seq_length, tsv=tsv)
+        gargs.logger.info("data loader info: {}".format(task_runner.data_processor))
+        preds = task_runner.predict()
+        
+        return preds
 
     for batch_id, each_batch_dir in enumerate(Path(gargs.data_dir).iterdir()):
         try:
