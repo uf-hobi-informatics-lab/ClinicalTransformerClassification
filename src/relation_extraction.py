@@ -79,16 +79,28 @@ def app(gargs):
     if gargs.do_predict:
         # run prediction
         try:
-            preds = task_runner.predict()
+            preds, pred_probs = task_runner.predict()
         except Exception as ex:
             gargs.logger.error("Prediction error:\n{}".format(traceback.format_exc()))
             raise RuntimeError(traceback.format_exc())
 
         pred_res = "\n".join([str(pred) for pred in preds])
+        final_prob_results = "\n".join(
+            [
+                "\t".join(e)
+                for e in zip([str(e) for e in pred_res], [str(e) for e in pred_probs])
+            ]
+        )
 
         # predict_output_file must be a file, we will create parent dir automatically
         Path(gargs.predict_output_file).parent.mkdir(parents=True, exist_ok=True)
         save_text(pred_res, gargs.predict_output_file)
+
+        prob_result_file = (
+            Path(gargs.predict_output_file).parent
+            / f"{Path(gargs.predict_output_file).stem}_prob.tsv"
+        )
+        save_text(final_prob_results, prob_result_file)
 
 
 if __name__ == "__main__":

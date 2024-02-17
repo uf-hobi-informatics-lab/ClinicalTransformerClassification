@@ -203,7 +203,7 @@ class TaskRunner(object):
 
         # this is done on dev
         true_labels = np.array([dev_fea.label for dev_fea in self.dev_features])
-        preds, eval_loss = self._run_eval(self.dev_data_loader)
+        preds, eval_loss, _ = self._run_eval(self.dev_data_loader)
         eval_res = acc_and_f1(
             labels=true_labels,
             preds=preds,
@@ -216,14 +216,14 @@ class TaskRunner(object):
     def predict(self):
         self.args.logger.info("start prediction...")
         # this is for prediction
-        preds, _ = self._run_eval(self.test_data_loader)
+        preds, _, pred_probs = self._run_eval(self.test_data_loader)
         # convert predicted label idx to real label
         self.args.logger.info(
             "label to index for prediction:\n{}".format(self.label2idx)
         )
         preds = [self.idx2label[pred] for pred in preds]
 
-        return preds
+        return preds, pred_probs
 
     def _init_new_model(self):
         """initialize a new model for fine-tuning"""
@@ -428,6 +428,8 @@ class TaskRunner(object):
 
         batch_iter.close()
         temp_loss = temp_loss / total_sample_num
+        # use softmax to get the prob
+        pred_prob = np.max(preds, axis=-1)
         preds = np.argmax(preds, axis=-1)
 
         return preds, temp_loss, pred_prob
