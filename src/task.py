@@ -420,7 +420,7 @@ class TaskRunner(object):
                 batch_output = self.model(**batch_input)
                 loss, logits = batch_output[:2]
                 temp_loss += loss.item()
-                logits = logits.detach().cpu().numpy()
+                logits_prob = torch.softmax(logits.detach(), dim=-1).cpu().numpy()
                 if preds is None:
                     preds = logits
                 else:

@@ -70,12 +70,13 @@ def app(gargs):
                 max_len=gargs.max_seq_length,
             )
             gargs.logger.info("data loader info: {}".format(task_runner.data_processor))
-            preds = task_runner.predict()
+            preds, pred_probs = task_runner.predict()
         except Exception as ex:
             gargs.logger.error("Prediction error:\n{}".format(traceback.format_exc()))
             raise RuntimeError(traceback.format_exc())
 
         pred_res = "\n".join([str(pred) for pred in preds])
+        pred_prob_res = "\n".join([str(pred_prob) for pred_prob in pred_probs])
 
         # predict_output_file must be a file, we will create parent dir automatically
         p_pred = Path(gargs.predict_output_dir)
@@ -83,12 +84,19 @@ def app(gargs):
         save_text(
             pred_res, gargs.predict_output_dir / f"batch_{batch_id}_prediction.txt"
         )
+        save_text(
+            pred_prob_res,
+            gargs.predict_output_dir / f"batch_{batch_id}_prediction_prob.txt",
+        )
 
         # output to files
         gargs.mode = gargs.classification_mode
         gargs.neg_type = gargs.non_relation_label
         gargs.predict_result_file = (
             gargs.predict_output_dir / f"batch_{batch_id}_prediction.txt"
+        )
+        gargs.predict_result_prob_file = (
+            gargs.predict_output_dir / f"batch_{batch_id}_prediction_prob.txt"
         )
         gargs.test_data_file = each_batch_dir / "test.tsv"
         post_processing(gargs)
