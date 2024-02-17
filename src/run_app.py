@@ -6,15 +6,21 @@ The py file is an example for
 
 We used deberta as an example
 """
-from models import BaseModel
-from data_utils import RelationDataFormatSepProcessor
-from transformers import DebertaForSequenceClassification, DebertaModel, DebertaConfig, DebertaTokenizer
-from task import TaskRunner
-from utils import TransformerLogger
+
+import traceback
 
 import numpy as np
 import torch
-import traceback
+from data_utils import RelationDataFormatSepProcessor
+from models import BaseModel
+from task import TaskRunner
+from transformers import (
+    DebertaConfig,
+    DebertaForSequenceClassification,
+    DebertaModel,
+    DebertaTokenizer,
+)
+from utils import TransformerLogger
 
 
 class DeBERTaRelationExtraction(DebertaForSequenceClassification, BaseModel):
@@ -22,16 +28,16 @@ class DeBERTaRelationExtraction(DebertaForSequenceClassification, BaseModel):
         super().__init__(config)
 
     def forward(
-            self,
-            input_ids=None,
-            attention_mask=None,
-            token_type_ids=None,
-            position_ids=None,
-            inputs_embeds=None,
-            labels=None,
-            output_attentions=None,
-            output_hidden_states=None,
-            return_dict=None,
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        inputs_embeds=None,
+        labels=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
     ):
         outputs = self.deberta(
             input_ids,
@@ -58,18 +64,31 @@ class DeBERTaRelationExtraction(DebertaForSequenceClassification, BaseModel):
 
 
 class DeBERTaDataProcessor(RelationDataFormatSepProcessor):
-    def __init__(self, data_dir=None, max_seq_len=128, num_core=-1, header=True, tokenizer_type='deberta'):
+    def __init__(
+        self,
+        data_dir=None,
+        max_seq_len=128,
+        num_core=-1,
+        header=True,
+        tokenizer_type="deberta",
+    ):
         super().__init__(
-            data_dir=data_dir, max_seq_len=max_seq_len, num_core=num_core, header=True, tokenizer_type='deberta')
+            data_dir=data_dir,
+            max_seq_len=max_seq_len,
+            num_core=num_core,
+            header=True,
+            tokenizer_type="deberta",
+        )
         self.total_special_token_num = 4
 
 
 class Args:
     """
-        used to init all parameters
-        deberta use roberta vocab
-        deberta-v2 need new tokenizer as XLNet based on SPM
+    used to init all parameters
+    deberta use roberta vocab
+    deberta-v2 need new tokenizer as XLNet based on SPM
     """
+
     def __init__(self, **kwargs):
         self.model_type = "deberta"
         self.data_format_mode = 0
@@ -121,7 +140,9 @@ class Args:
 def app():
     args = Args()
     args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    args.logger = TransformerLogger(logger_file=args.log_file, logger_level='i').get_logger()
+    args.logger = TransformerLogger(
+        logger_file=args.log_file, logger_level="i"
+    ).get_logger()
 
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -129,10 +150,15 @@ def app():
     task_runner = TaskRunner(args)
 
     # add deberta to model dict
-    task_runner.model_dict['deberta'] = (DeBERTaRelationExtraction, DebertaConfig, DebertaTokenizer)
+    task_runner.model_dict["deberta"] = (
+        DeBERTaRelationExtraction,
+        DebertaConfig,
+        DebertaTokenizer,
+    )
     # set deberta data processor for data processing
     task_runner.data_processor = DeBERTaDataProcessor(
-        max_seq_len=args.max_seq_length, num_core=args.num_core)
+        max_seq_len=args.max_seq_length, num_core=args.num_core
+    )
 
     task_runner.task_runner_default_init()
 
@@ -149,5 +175,5 @@ def app():
             raise RuntimeError(traceback.print_exc())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app()
