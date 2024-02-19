@@ -88,7 +88,7 @@ def app(gargs):
         final_prob_results = "\n".join(
             [
                 "\t".join(e)
-                for e in zip([str(e) for e in pred_res], [str(e) for e in pred_probs])
+                for e in zip([str(e) for e in pred], [str(e) for e in pred_probs])
             ]
         )
 
