@@ -411,6 +411,7 @@ class TaskRunner(object):
         batch_iter = tqdm(data_loader, desc="Batch", disable=not self.args.progress_bar)
         total_sample_num = len(batch_iter)
         preds = None
+        preds_prob = None
 
         for batch in batch_iter:
             batch_input = batch_to_model_input(
@@ -420,11 +421,15 @@ class TaskRunner(object):
                 batch_output = self.model(**batch_input)
                 loss, logits = batch_output[:2]
                 temp_loss += loss.item()
-                logits_prob = torch.softmax(logits.detach(), dim=-1).cpu().numpy()
+                logits = logits.detach()
+                logits_prob = torch.softmax(logits, dim=-1).cpu().numpy()
+                logits = logits.cpu().numpy()
                 if preds is None:
                     preds = logits
+                    preds_prob = logits_prob
                 else:
                     preds = np.append(preds, logits, axis=0)
+                    preds_prob = np.append(preds_prob, logits_prob, axis=0)
 
         batch_iter.close()
         temp_loss = temp_loss / total_sample_num
