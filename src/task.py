@@ -410,7 +410,7 @@ class TaskRunner(object):
         # create dev data batch iteration
         batch_iter = tqdm(data_loader, desc="Batch", disable=not self.args.progress_bar)
         total_sample_num = len(batch_iter)
-        preds = None
+        # preds = None
         preds_prob = None
 
         for batch in batch_iter:
@@ -421,21 +421,21 @@ class TaskRunner(object):
                 batch_output = self.model(**batch_input)
                 loss, logits = batch_output[:2]
                 temp_loss += loss.item()
-                logits = logits.detach()
-                logits_prob = torch.softmax(logits, dim=-1).cpu().numpy()
-                logits = logits.cpu().numpy()
+                # represent the prob using softmax
+                logits_prob = torch.softmax(logits, dim=-1).detach().cpu().numpy()
+                # logits = logits.cpu().numpy()
                 if preds is None:
-                    preds = logits
+                    # preds = logits
                     preds_prob = logits_prob
                 else:
-                    preds = np.append(preds, logits, axis=0)
+                    # preds = np.append(preds, logits, axis=0)
                     preds_prob = np.append(preds_prob, logits_prob, axis=0)
 
         batch_iter.close()
         temp_loss = temp_loss / total_sample_num
-        # use softmax to get the prob
-        pred_prob = np.max(preds, axis=-1)
-        preds = np.argmax(preds, axis=-1)
+        # use max to get the prob of the label predicted
+        pred_prob = np.max(preds_prob, axis=-1)
+        preds = np.argmax(preds_prob, axis=-1)
 
         return preds, temp_loss, pred_prob
 
