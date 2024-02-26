@@ -424,7 +424,7 @@ class TaskRunner(object):
                 # represent the prob using softmax
                 logits_prob = torch.softmax(logits, dim=-1).detach().cpu().numpy()
                 # logits = logits.cpu().numpy()
-                if preds is None:
+                if preds_prob is None:
                     # preds = logits
                     preds_prob = logits_prob
                 else:
